@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Interactive Counter</title>
+    
+    <style>
+        :root {
+            /* Base HUE and Saturation/Lightness values */
+            --base-hue: 200; /* Start at a blueish color */
+            --base-saturation: 80%;
+            --base-lightness: 50%;
+            
+            /* Calculated Colors using the HSL variables for continuous theme change */
+            --background-color: hsl(var(--base-hue), 25%, 90%);
+            --card-color: hsl(var(--base-hue), var(--base-saturation), 95%);
+            --text-color: hsl(var(--base-hue), 50%, 30%);
+            --button-color: hsl(var(--base-hue), var(--base-saturation), 45%);
+            --button-hover: hsl(var(--base-hue), var(--base-saturation), 35%);
+            --accent-color: hsl(calc(var(--base-hue) + 60), 85%, 50%); /* A color 60 degrees away for contrast */
+            
+            transition: all 0.6s ease-out; /* Smooth transitions for all theme changes */
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #counter-card {
+            background-color: var(--card-color);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            transition: background-color 0.6s ease, box-shadow 0.3s ease;
+            width: 90%;
+            max-width: 450px;
+            border: 3px solid var(--accent-color);
+        }
+
+        #settings-group {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        #target-input, #step-input {
+            padding: 8px 12px;
+            width: 100px;
+            text-align: center;
+            border: 2px solid var(--button-color);
+            border-radius: 8px;
+            font-size: 1em;
+            margin-top: 5px;
+            transition: border-color 0.3s ease;
+        }
+
+        #target-clarity {
+            font-size: 1.1em;
+            font-style: italic;
+            color: var(--text-color);
+            margin: -10px 0 20px 0;
+        }
+
+        #counter-display {
+            font-size: 6.5em; /* Larger and more prominent */
+            font-weight: 900;
+            margin: 20px 0;
+            color: var(--accent-color);
+            min-height: 1.2em;
+            transition: color 0.6s ease;
+        }
+
+        /* Animation Keyframes: The "Awe-Inspiring" Effect */
+        @keyframes increment-pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15) rotate(5deg); opacity: 0.8; text-shadow: 0 0 20px var(--accent-color); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .animated {
+            animation: increment-pulse 0.4s ease-out;
+        }
+
+        #button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            background-color: var(--button-color);
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            flex-grow: 1;
+        }
+
+        #reset-button {
+            background-color: #6c757d;
+            flex-grow: 0.5;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: var(--button-hover);
+            transform: translateY(-2px);
+        }
+
+        #reset-button:hover:not(:disabled) {
+            background-color: #5a6268;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        #message {
+            margin-top: 25px;
+            font-size: 1.6em;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @keyframes confetti-burst {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .celebration {
+            animation: confetti-burst 1s ease-out;
+            color: #ffc107;
+            text-shadow: 0 0 10px #ffc107;
+        }
+
+        @media (max-width: 600px) {
+            #counter-card {
+                padding: 25px;
+            }
+            #counter-display {
+                font-size: 4em;
+            }
+            #settings-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <div id="counter-card">
+            <h1>Dynamic Counter</h1>
+            
+            <div id="settings-group">
+                <div class="setting-item">
+                    <label for="target-input">Set Target Count:</label>
+                    <input type="number" id="target-input" value="10" min="1">
+                </div>
+                <div class="setting-item">
+                    <label for="step-input">Increment By:</label>
+                    <input type="number" id="step-input" value="1" min="1">
+                </div>
+            </div>
+
+            <p id="target-clarity">Counting towards: 10</p>
+
+            <div id="counter-display">0</div>
+            
+            <div id="button-group">
+                <button id="count-button">Count Up! ✨</button>
+                <button id="reset-button" class="hidden">Reset</button>
+            </div>
+
+            <div id="message" class="hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let currentCount = 0;
+            
+            const counterDisplay = document.getElementById('counter-display');
+            const countButton = document.getElementById('count-button');
+            const resetButton = document.getElementById('reset-button');
+            const messageDisplay = document.getElementById('message');
+            const targetInput = document.getElementById('target-input');
+            const stepInput = document.getElementById('step-input');
+            const targetClarity = document.getElementById('target-clarity');
+
+            let TARGET_COUNT = parseInt(targetInput.value, 10);
+            let STEP_VALUE = parseInt(stepInput.value, 10);
+
+            function getValidValue(inputElement, defaultValue = 1) {
+                let val = parseInt(inputElement.value, 10);
+                if (isNaN(val) || val < 1) {
+                    val = defaultValue;
+                    inputElement.value = defaultValue; 
+                }
+                return val;
+            }
+
+            function updateTheme() {
+                // Calculate a new HUE value based on the current count.
+                // Multiplying by 18 shifts the hue continuously for smooth cycling.
+                const newHue = (currentCount * 18) % 360;
+                document.documentElement.style.setProperty('--base-hue', newHue);
+            }
+
+            function updateClarity() {
+                targetClarity.textContent = `Counting towards: ${TARGET_COUNT}`;
+            }
+
+            function updateCounter() {
+                // Recalculate values on every click to allow dynamic changes
+                TARGET_COUNT = getValidValue(targetInput);
+                STEP_VALUE = getValidValue(stepInput);
+
+                // Check if the target is already reached
+                if (currentCount >= TARGET_COUNT) return;
+
+                currentCount += STEP_VALUE;
+
+                // 1. Check for Target
+                if (currentCount >= TARGET_COUNT) {
+                    currentCount = TARGET_COUNT; // Ensure it stops exactly at the target
+                    targetInput.disabled = true;
+                    stepInput.disabled = true;
+                    countButton.disabled = true;
+                    countButton.textContent = 'Goal Achieved!';
+                    resetButton.classList.remove('hidden');
+                    messageDisplay.classList.remove('hidden');
+                    messageDisplay.textContent = `🥳 Goal Reached: ${TARGET_COUNT} in style! 🎉`;
+                    messageDisplay.classList.add('celebration');
+                } else {
+                    // Change button text dynamically for engagement
+                    countButton.textContent = currentCount % (STEP_VALUE * 2) === 0 ? `Next +${STEP_VALUE}!` : 'Keep Counting! 🔥';
+                }
+
+                // 2. Update Display and Trigger Animation
+                counterDisplay.textContent = currentCount;
+                counterDisplay.classList.remove('animated');
+                // A trick to restart the CSS animation
+                void counterDisplay.offsetWidth; 
+                counterDisplay.classList.add('animated');
+
+                // 3. Continuous Theme Change
+                updateTheme();
+            }
+
+            function resetCounter() {
+                currentCount = 0;
+                
+                // Reset element states
+                counterDisplay.textContent = currentCount;
+                counterDisplay.classList.remove('animated');
+                
+                // Reset theme to the default starting hue
+                document.documentElement.style.setProperty('--base-hue', 200); 
+                
+                // Reset button and message states
+                targetInput.disabled = false;
+                stepInput.disabled = false;
+                countButton.disabled = false;
+                countButton.textContent = 'Count Up! ✨';
+                messageDisplay.classList.add('hidden');
+                messageDisplay.classList.remove('celebration');
+                resetButton.classList.add('hidden');
+                
+                // Update clarity display
+                TARGET_COUNT = getValidValue(targetInput);
+                updateClarity();
+            }
+
+            // --- Event Listeners ---
+            countButton.addEventListener('click', updateCounter);
+            resetButton.addEventListener('click', resetCounter);
+
+            // Reset and update clarity when settings change
+            [targetInput, stepInput].forEach(input => {
+                input.addEventListener('change', () => {
+                    // Reset the counter if the user changes settings mid-count
+                    if (currentCount > 0 || countButton.disabled) {
+                        resetCounter();
+                    } else {
+                        TARGET_COUNT = getValidValue(targetInput);
+                        updateClarity();
+                    }
+                });
+            });
+
+            // Initial setup: ensure the count starts at 0 and clarity is set
+            resetCounter();
+        });
+    </script>
+</body>
+</html>
