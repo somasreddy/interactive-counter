@@ -1,322 +1,1743 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Interactive Counter</title>
-    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Super Dynamic Multi Counter 100/10</title>
+
+    <!-- html2canvas for PNG export -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
     <style>
         :root {
-            /* Base HUE and Saturation/Lightness values */
-            --base-hue: 200; /* Start at a blueish color */
-            --base-saturation: 80%;
+            --base-hue: 200;
+            --base-saturation: 90%;
             --base-lightness: 50%;
-            
-            /* Calculated Colors using the HSL variables for continuous theme change */
-            --background-color: hsl(var(--base-hue), 25%, 90%);
-            --card-color: hsl(var(--base-hue), var(--base-saturation), 95%);
-            --text-color: hsl(var(--base-hue), 50%, 30%);
+
+            --bg-base: hsl(var(--base-hue), 40%, 88%);
+            --bg-darker: hsl(var(--base-hue), 45%, 80%);
+            --card-color: hsla(var(--base-hue), var(--base-saturation), 97%, 0.96);
+            --text-color: hsl(var(--base-hue), 35%, 18%);
             --button-color: hsl(var(--base-hue), var(--base-saturation), 45%);
             --button-hover: hsl(var(--base-hue), var(--base-saturation), 35%);
-            --accent-color: hsl(calc(var(--base-hue) + 60), 85%, 50%); /* A color 60 degrees away for contrast */
-            
-            transition: all 0.6s ease-out; /* Smooth transitions for all theme changes */
+            --accent-color: hsl(calc(var(--base-hue) + 60), 95%, 55%);
+
+            --font-base: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-heading-weight: 700;
+
+            transition: all 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        /* Background animations */
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes float {
+            0%,100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-12px) rotate(120deg); }
+        }
+
+        @keyframes pulse {
+            0%,100% { transform: scale(1); opacity: 0.55; }
+            50% { transform: scale(1.08); opacity: 0.85; }
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
             margin: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--background-color);
+            font-family: var(--font-base);
             color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
             min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            background: linear-gradient(-45deg, var(--bg-base), var(--bg-darker), var(--bg-base));
+            background-size: 350% 350%;
+            animation: gradient-shift 16s ease infinite;
         }
 
-        #counter-card {
-            background-color: var(--card-color);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-            text-align: center;
-            transition: background-color 0.6s ease, box-shadow 0.3s ease;
-            width: 90%;
-            max-width: 450px;
-            border: 3px solid var(--accent-color);
+        /* Background blobs */
+        .bg-element {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(40px);
+            opacity: 0.35;
+            z-index: 1;
+            pointer-events: none;
         }
 
-        #settings-group {
+        .bg-element-1 {
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, var(--accent-color), transparent);
+            top: 12%;
+            left: 8%;
+            animation: float 22s ease-in-out infinite, pulse 10s ease-in-out infinite;
+        }
+
+        .bg-element-2 {
+            width: 260px;
+            height: 260px;
+            background: radial-gradient(circle, var(--button-color), transparent);
+            bottom: 8%;
+            right: 10%;
+            animation: float 26s ease-in-out infinite reverse, pulse 14s ease-in-out infinite;
+        }
+
+        .bg-element-3 {
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, var(--card-color), transparent);
+            top: 55%;
+            right: 22%;
+            animation: float 18s ease-in-out infinite, pulse 12s ease-in-out infinite;
+        }
+
+        /* Layout */
+        #main-layout {
+            position: relative;
+            z-index: 5;
+            padding: 110px 16px 32px; /* more top padding so navbar elements never overlap cards */
+            max-width: 1200px;
+            margin: 0 auto;
+            transition: margin-left 0.3s ease;
+        }
+
+        @media (max-width: 767px) {
+            #main-layout {
+                padding-top: 130px;
+            }
+        }
+
+        /* When sidebar open on wider screens, shift content */
+        @media (min-width: 900px) {
+            #ui-panel.open ~ #main-layout {
+                margin-left: 300px; /* same as sidebar width */
+            }
+        }
+
+        /* Top bar with add + export + toggles */
+        #top-bar {
             display: flex;
-            justify-content: space-around;
-            margin-bottom: 20px;
-            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        #top-bar-left,
+        #top-bar-right {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .top-btn {
+            padding: 7px 12px;
+            font-size: 0.8rem;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.7);
+            color: #f9fafb;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+        }
+
+        .top-btn span.icon {
+            font-size: 0.9rem;
+        }
+
+        /* Theme selector */
+        #theme-selector {
+            position: fixed;
+            top: 10px;
+            right: 16px;
+            z-index: 120;
+        }
+
+        #theme-select {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.92);
+            color: var(--text-color);
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            font-size: 0.78rem;
+        }
+
+        /* Sidebar toggle (hamburger) */
+        #ui-toggle {
+            position: fixed;
+            top: 10px;
+            left: 16px;
+            z-index: 130;
+        }
+
+        #ui-toggle button {
+            min-width: auto;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            padding: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.7);
+            border: 1px solid rgba(255,255,255,0.4);
+            cursor: pointer;
+        }
+
+        #ui-toggle button span {
+            display: block;
+            width: 18px;
+            height: 2px;
+            margin: 2px auto;
+            background: #fff;
+            border-radius: 999px;
+        }
+
+        /* Sidebar UI customizer */
+        #ui-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 300px;
+            max-width: 80%;
+            height: 100vh;
+            background: rgba(10, 15, 25, 0.94);
+            color: #f3f4f7;
+            padding: 16px;
+            box-shadow: 4px 0 16px rgba(0, 0, 0, 0.5);
+            transform: translateX(-320px);
+            transition: transform 0.28s ease-out;
+            z-index: 125;
+            backdrop-filter: blur(20px);
+            overflow-y: auto;
+        }
+
+        #ui-panel.open {
+            transform: translateX(0);
+        }
+
+        #ui-panel h2 {
+            margin: 4px 0 10px;
+            font-size: 1.05rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .ui-section {
+            margin-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 8px;
+        }
+
+        .ui-section:last-child {
+            border-bottom: none;
+        }
+
+        .ui-section label {
+            display: block;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 3px;
+            opacity: 0.85;
+        }
+
+        .ui-section select {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 7px;
+            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(9,14,25,0.9);
+            color: #f3f4f7;
+            font-size: 0.8rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+
+        .ui-small {
+            font-size: 0.72rem;
+            opacity: 0.75;
+            margin-top: 6px;
+        }
+
+        /* Counter grid */
+        #counter-grid {
+            display: grid;
+            gap: 16px;
+            justify-items: center; /* center cards in their grid cells */
+        }
+
+        @media (min-width: 700px) {
+            #counter-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (min-width: 1024px) {
+            #counter-grid {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        /* Card base */
+        .counter-card {
+            background-color: var(--card-color);
+            padding: 18px 18px 16px;
+            border-radius: 18px;
+            box-shadow:
+                0 12px 24px rgba(0, 0, 0, 0.22),
+                0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.55);
+            position: relative;
+            backdrop-filter: blur(12px);
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .delete-btn {
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .delete-btn:hover {
+            color: #ef4444;
+        }
+
+        .card-body h2 {
+            margin: 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .settings-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
         }
 
         .setting-item {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
+            flex: 1;
+            min-width: 120px;
         }
 
-        #target-input, #step-input {
-            padding: 8px 12px;
-            width: 100px;
-            text-align: center;
-            border: 2px solid var(--button-color);
+        .setting-item label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            opacity: 0.8;
+        }
+
+        .setting-item input[type="number"],
+        .setting-item select {
+            padding: 6px 8px;
+            margin-top: 3px;
             border-radius: 8px;
-            font-size: 1em;
-            margin-top: 5px;
-            transition: border-color 0.3s ease;
+            border: 2px solid var(--button-color);
+            font-size: 0.8rem;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.92);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            transition:
+                border-color 0.25s ease,
+                transform 0.18s ease,
+                box-shadow 0.25s ease;
         }
 
-        #target-clarity {
-            font-size: 1.1em;
+        .setting-item input[type="number"]:focus,
+        .setting-item select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .target-clarity {
+            font-size: 0.8em;
             font-style: italic;
-            color: var(--text-color);
-            margin: -10px 0 20px 0;
+            margin: 5px 0 8px;
+            opacity: 0.82;
         }
 
-        #counter-display {
-            font-size: 6.5em; /* Larger and more prominent */
+        .counter-value {
+            font-size: 2.8rem;
             font-weight: 900;
-            margin: 20px 0;
+            margin: 0;
             color: var(--accent-color);
             min-height: 1.2em;
-            transition: color 0.6s ease;
+            position: relative;
+            text-shadow:
+                1px 1px 2px rgba(0, 0, 0, 0.35),
+                0 0 10px rgba(0, 0, 0, 0.25);
         }
 
-        /* Animation Keyframes: The "Awe-Inspiring" Effect */
-        @keyframes increment-pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.15) rotate(5deg); opacity: 0.8; text-shadow: 0 0 20px var(--accent-color); }
-            100% { transform: scale(1); opacity: 1; }
+        .counter-value::before {
+            content: attr(data-value);
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            color: rgba(0, 0, 0, 0.3);
+            z-index: -1;
         }
 
-        .animated {
-            animation: increment-pulse 0.4s ease-out;
+        /* Effects */
+        @keyframes super-increment {
+            0% { transform: perspective(400px) scale(1) rotateX(0deg) skewX(0deg); opacity: 1; }
+            30% {
+                transform: perspective(400px) scale(1.2) rotateX(16deg) skewX(6deg);
+                opacity: 0.9;
+                text-shadow: 0 0 18px var(--accent-color), 0 0 30px var(--accent-color);
+            }
+            100% { transform: perspective(400px) scale(1) rotateX(0deg) skewX(0deg); opacity: 1; }
         }
 
-        #button-group {
+        @keyframes flip3d {
+            0% { transform: perspective(900px) rotateY(0deg) scale(1); opacity: 1; }
+            50% {
+                transform: perspective(900px) rotateY(180deg) scale(1.12);
+                opacity: 0.7;
+                text-shadow: 0 0 16px var(--accent-color), 0 0 28px var(--accent-color);
+            }
+            100% { transform: perspective(900px) rotateY(360deg) scale(1); opacity: 1; }
+        }
+
+        @keyframes fire-burst {
+            0% { transform: scale(1); text-shadow: 0 0 0 #ff9800, 0 0 0 #ff5722; }
+            50% { transform: scale(1.16); text-shadow: 0 0 12px #ff9800, 0 0 22px #ff5722; }
+            100% { transform: scale(1); text-shadow: 0 0 3px #ff9800, 0 0 6px #ff5722; }
+        }
+
+        @keyframes shockwave {
+            0% { transform: scale(1); }
+            70% { transform: scale(1.12); }
+            100% { transform: scale(1); }
+        }
+
+        .counter-value.shockwave::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            animation: shockwave-ring 0.45s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes shockwave-ring {
+            0% { transform: scale(0.6); opacity: 0.9; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
+
+        @keyframes liquid-morph {
+            0% { transform: scale(1) skewX(0deg); filter: blur(0); }
+            50% { transform: scale(1.14) skewX(7deg); filter: blur(0.5px); }
+            100% { transform: scale(1) skewX(0deg); filter: blur(0); }
+        }
+
+        @keyframes pop3d {
+            0% { transform: translateZ(0) scale(1); }
+            40% { transform: translateZ(30px) scale(1.16) translateY(-4px); }
+            100% { transform: translateZ(0) scale(1); }
+        }
+
+        .effect-super { animation: super-increment 0.4s cubic-bezier(0.68,-0.55,0.265,1.55); }
+        .effect-flip { animation: flip3d 0.7s ease-in-out; }
+        .effect-fire { animation: fire-burst 0.4s ease-out; }
+        .effect-liquid { animation: liquid-morph 0.4s ease-out; }
+        .effect-pop3d { animation: pop3d 0.4s ease-out; }
+        .effect-shockwave { animation: shockwave 0.32s ease-out; }
+
+        /* Buttons in card */
+        .card-buttons {
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            gap: 8px;
+            margin-top: 10px;
+            flex-wrap: wrap;
         }
 
-        button {
-            padding: 15px 30px;
-            font-size: 1.2em;
-            font-weight: bold;
+        .card-buttons button {
+            padding: 8px 12px;
+            font-size: 0.82rem;
+            font-weight: 600;
             border: none;
-            border-radius: 10px;
+            border-radius: 999px;
             background-color: var(--button-color);
-            color: white;
+            color: #fff;
             cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.3s ease, transform 0.1s ease;
-            flex-grow: 1;
+            flex: 1;
+            min-width: 90px;
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                0 3px 8px rgba(0, 0, 0, 0.16),
+                0 1px 2px rgba(0, 0, 0, 0.08);
+            transition:
+                transform 0.18s ease,
+                box-shadow 0.18s ease,
+                background-color 0.18s ease;
         }
 
-        #reset-button {
-            background-color: #6c757d;
-            flex-grow: 0.5;
+        .card-buttons button::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
         }
 
-        button:hover:not(:disabled) {
+        .card-buttons button:hover:not(:disabled)::before { left: 100%; }
+
+        .card-buttons button:hover:not(:disabled) {
             background-color: var(--button-hover);
-            transform: translateY(-2px);
+            transform: translateY(-1px) scale(1.01);
+            box-shadow:
+                0 6px 12px rgba(0, 0, 0, 0.18),
+                0 2px 4px rgba(0, 0, 0, 0.12);
         }
 
-        #reset-button:hover:not(:disabled) {
-            background-color: #5a6268;
+        .card-buttons button:active:not(:disabled) {
+            transform: translateY(0);
+            box-shadow:
+                0 3px 6px rgba(0, 0, 0, 0.22),
+                0 1px 2px rgba(0, 0, 0, 0.15);
         }
 
-        button:disabled {
-            background-color: #cccccc;
+        .card-buttons button:disabled {
+            background-color: #bcbcbc;
             cursor: not-allowed;
             box-shadow: none;
         }
 
-        #message {
-            margin-top: 25px;
-            font-size: 1.6em;
-            font-weight: bold;
+        .reset-btn {
+            background-color: #6b7280;
+            flex: 0.8;
+        }
+
+        .message {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
             color: var(--accent-color);
+            text-shadow: 0 0 6px rgba(255,255,255,0.5);
+            display: none;
         }
 
-        .hidden {
-            display: none !important;
+        .message.show {
+            display: block;
         }
 
-        @keyframes confetti-burst {
-            0% { transform: scale(0.5); opacity: 0; }
-            70% { transform: scale(1.2); opacity: 1; }
+        @keyframes celebration {
+            0% { transform: scale(0.86); opacity: 0; }
+            50% { transform: scale(1.12); }
             100% { transform: scale(1); opacity: 1; }
         }
 
-        .celebration {
-            animation: confetti-burst 1s ease-out;
-            color: #ffc107;
-            text-shadow: 0 0 10px #ffc107;
+        .celebration { animation: celebration 0.8s cubic-bezier(0.175,0.885,0.32,1.275); }
+
+        /* Confetti & particles */
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: currentColor;
+            opacity: 0;
+            pointer-events: none;
+            border-radius: 50%;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            z-index: 15;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
+        @keyframes confetti-fall {
+            0% { transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }
+            100% { transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(0); opacity: 0; }
+        }
+
+        .particle,
+        .trail-particle {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            z-index: 6;
+        }
+
+        @keyframes particle-explode {
+            0% { transform: translate(0,0) scale(0); opacity: 1; }
+            100% { transform: translate(var(--px), var(--py)) scale(1); opacity: 0; }
+        }
+
+        @keyframes trail-fade {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(0.2); opacity: 0; }
+        }
+
+        .trail-particle { animation: trail-fade 0.5s ease-out forwards; }
+
+        /* Card style variations */
+
+        body[data-card-style="glass"] .counter-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.86), rgba(255,255,255,0.75));
+            backdrop-filter: blur(18px);
+        }
+
+        body[data-card-style="minimal"] .counter-card {
+            background: #f7f8fa;
+            border-radius: 16px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+        }
+
+        body[data-card-style="neon"] .counter-card {
+            background: radial-gradient(circle at top, rgba(12,16,40,0.95), rgba(5,8,22,0.98));
+            color: #e8f5ff;
+        }
+
+        body[data-card-style="neon"] .counter-card .card-title,
+        body[data-card-style="neon"] .counter-card .target-clarity {
+            color: #e0f4ff;
+        }
+
+        body[data-card-style="gold"] .counter-card {
+            background: linear-gradient(135deg,#fffaf1,#fbe7c0);
+            border-color: #d8a538;
+        }
+
+        body[data-card-style="matrix"] .counter-card {
+            background: radial-gradient(circle at top,#021a0a,#010806);
+            color: #c3ffd1;
+        }
+
+        body[data-card-style="pastel"] .counter-card {
+            background: linear-gradient(135deg,#fff9fb,#f5f8ff);
+        }
+
+        body[data-card-style="dark-card"] .counter-card {
+            background: radial-gradient(circle at top,#171c28,#05070a);
+            color: #f1f5f9;
+        }
+
+        body[data-card-style="frosted"] .counter-card {
+            background: linear-gradient(135deg,rgba(255,255,255,0.85),rgba(235,244,255,0.9));
+        }
+
+        /* Glow levels */
+        body[data-glow="none"] .counter-card {
+            box-shadow:
+                0 6px 14px rgba(0, 0, 0, 0.16),
+                0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+            border-color: rgba(255, 255, 255, 0.45);
+        }
+
+        body[data-glow="soft"] .counter-card {
+            box-shadow:
+                0 14px 30px rgba(0, 0, 0, 0.26),
+                0 0 18px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+        }
+
+        body[data-glow="medium"] .counter-card {
+            box-shadow:
+                0 18px 36px rgba(0, 0, 0, 0.32),
+                0 0 20px rgba(0, 0, 0, 0.18),
+                0 0 26px rgba(0, 255, 255, 0.25);
+            border-color: rgba(0, 255, 255, 0.55);
+        }
+
+        body[data-glow="strong"] .counter-card {
+            box-shadow:
+                0 20px 42px rgba(0, 0, 0, 0.4),
+                0 0 30px rgba(0, 0, 0, 0.35),
+                0 0 40px rgba(0, 255, 255, 0.35);
+            border-color: rgba(0, 255, 255, 0.7);
+        }
+
+        body[data-glow="neon"] .counter-card {
+            box-shadow:
+                0 22px 48px rgba(0, 0, 0, 0.5),
+                0 0 32px rgba(0, 255, 255, 0.55),
+                0 0 60px rgba(0, 255, 200, 0.75);
+            border-color: rgba(0, 255, 200, 0.9);
+        }
+
+        /* Button style variations */
+
+        body[data-button-style="flat"] .card-buttons button {
+            box-shadow: none;
+            border-radius: 10px;
+        }
+
+        body[data-button-style="outline"] .card-buttons button {
+            background: transparent;
+            color: var(--button-color);
+            border: 2px solid var(--button-color);
+            box-shadow: none;
+        }
+
+        body[data-button-style="outline"] .card-buttons .reset-btn {
+            background: transparent;
+            border-color: #8a8f99;
+            color: #3d4148;
+        }
+
+        body[data-button-style="square"] .card-buttons button {
+            border-radius: 8px;
+        }
+
+        body[data-button-style="pill"] .card-buttons button {
+            border-radius: 999px;
+        }
+
+        body[data-button-style="neon"] .card-buttons button {
+            box-shadow:
+                0 0 10px rgba(0,255,255,0.7),
+                0 0 20px rgba(0,255,255,0.5);
+        }
+
+        body[data-button-style="glass"] .card-buttons button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.6);
+            backdrop-filter: blur(8px);
+            color: #fefefe;
+        }
+
+        /* Font style variations */
+
+        body[data-font-style="modern"] {
+            --font-base: "Segoe UI", system-ui, sans-serif;
+            --font-heading-weight: 700;
+        }
+
+        body[data-font-style="system"] {
+            --font-base: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-heading-weight: 700;
+        }
+
+        body[data-font-style="rounded"] {
+            --font-base: "Nunito", "Segoe UI", system-ui, sans-serif;
+            --font-heading-weight: 800;
+        }
+
+        body[data-font-style="display"] {
+            --font-base: "Poppins", system-ui, sans-serif;
+            --font-heading-weight: 800;
+        }
+
+        body[data-font-style="serif"] {
+            --font-base: "Georgia", "Times New Roman", serif;
+            --font-heading-weight: 700;
+        }
+
+        body[data-font-style="mono"] {
+            --font-base: "Fira Code", "Consolas", monospace;
+            --font-heading-weight: 700;
+        }
+
+        body[data-font-style="techno"] {
+            --font-base: "Orbitron", system-ui, sans-serif;
+            --font-heading-weight: 700;
+        }
+
+        /* Responsive tweaks */
         @media (max-width: 600px) {
-            #counter-card {
-                padding: 25px;
-            }
-            #counter-display {
-                font-size: 4em;
-            }
-            #settings-group {
+            .card-buttons {
                 flex-direction: column;
             }
         }
     </style>
 </head>
-<body>
-    <div id="app-container">
-        <div id="counter-card">
-            <h1>Dynamic Counter</h1>
-            
-            <div id="settings-group">
-                <div class="setting-item">
-                    <label for="target-input">Set Target Count:</label>
-                    <input type="number" id="target-input" value="10" min="1">
-                </div>
-                <div class="setting-item">
-                    <label for="step-input">Increment By:</label>
-                    <input type="number" id="step-input" value="1" min="1">
-                </div>
-            </div>
-
-            <p id="target-clarity">Counting towards: 10</p>
-
-            <div id="counter-display">0</div>
-            
-            <div id="button-group">
-                <button id="count-button">Count Up! ✨</button>
-                <button id="reset-button" class="hidden">Reset</button>
-            </div>
-
-            <div id="message" class="hidden"></div>
-        </div>
+<body
+    data-card-style="glass"
+    data-button-style="pill"
+    data-glow="soft"
+    data-font-style="modern"
+>
+    <!-- Sidebar toggle -->
+    <div id="ui-toggle">
+        <button type="button" id="ui-toggle-btn" title="UI Settings">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </div>
 
+    <!-- Sidebar UI customizer -->
+    <aside id="ui-panel">
+        <h2>STYLES</h2>
+
+        <div class="ui-section">
+            <label for="card-style-select">Card Style</label>
+            <select id="card-style-select">
+                <option value="glass">Glassmorphism</option>
+                <option value="frosted">Frosted Light</option>
+                <option value="minimal">Minimal Clean</option>
+                <option value="neon">Neon Tech</option>
+                <option value="gold">Metallic Gold</option>
+                <option value="matrix">Matrix Green</option>
+                <option value="dark-card">Dark Card</option>
+                <option value="pastel">Pastel Soft</option>
+            </select>
+        </div>
+
+        <div class="ui-section">
+            <label for="button-style-select">Button Style</label>
+            <select id="button-style-select">
+                <option value="pill">Soft Rounded</option>
+                <option value="flat">Flat Minimal</option>
+                <option value="square">Square</option>
+                <option value="outline">Outline</option>
+                <option value="neon">Neon Glow</option>
+                <option value="glass">Glass Button</option>
+            </select>
+        </div>
+
+        <div class="ui-section">
+            <label for="glow-select">Glow Level</label>
+            <select id="glow-select">
+                <option value="soft">Soft Glow</option>
+                <option value="none">No Glow</option>
+                <option value="medium">Medium Glow</option>
+                <option value="strong">Strong Glow</option>
+                <option value="neon">Neon Glow</option>
+            </select>
+        </div>
+
+        <div class="ui-section">
+            <label for="font-style-select">Font Style</label>
+            <select id="font-style-select">
+                <option value="modern">Modern Sans</option>
+                <option value="system">System UI</option>
+                <option value="rounded">Rounded</option>
+                <option value="display">Display / Poppins</option>
+                <option value="serif">Elegant Serif</option>
+                <option value="mono">Monospace</option>
+                <option value="techno">Techno</option>
+            </select>
+            <div class="ui-small">Affects headings & text across all cards.</div>
+        </div>
+
+        <div class="ui-section">
+            <div class="ui-small">
+                Background themes are controlled using the dropdown on the top-right.
+            </div>
+        </div>
+    </aside>
+
+    <!-- Theme selector -->
+    <div id="theme-selector">
+        <select id="theme-select">
+            <option value="gradient">Gradient Theme</option>
+            <option value="space">Space Theme</option>
+            <option value="nature">Nature Theme</option>
+            <option value="abstract">Abstract Theme</option>
+            <option value="dark">Dark Mode</option>
+            <option value="neon">Neon Tech</option>
+            <option value="gold">Metallic Gold</option>
+            <option value="matrix">Matrix Green</option>
+            <option value="galaxy">Galaxy</option>
+            <option value="ocean">Ocean Blue</option>
+            <option value="candy">Candy Pop</option>
+            <option value="pastel">Pastel Aesthetic</option>
+        </select>
+    </div>
+
+    <!-- Background blobs -->
+    <div class="bg-element bg-element-1"></div>
+    <div class="bg-element bg-element-2"></div>
+    <div class="bg-element bg-element-3"></div>
+
+    <!-- Main layout -->
+    <main id="main-layout">
+        <div id="top-bar">
+            <div id="top-bar-left">
+                <button class="top-btn" id="add-counter-btn">
+                    <span class="icon">➕</span> Add Counter
+                </button>
+            </div>
+            <div id="top-bar-right">
+                <label style="font-size:0.8rem;display:flex;align-items:center;gap:4px;">
+                    <input type="checkbox" id="sound-toggle" checked /> Sound
+                </label>
+                <label style="font-size:0.8rem;display:flex;align-items:center;gap:4px;">
+                    <input type="checkbox" id="trail-toggle" /> Mouse Trail
+                </label>
+                <button class="top-btn" id="export-png-btn">
+                    <span class="icon">🖼️</span> PNG
+                </button>
+                <button class="top-btn" id="export-json-btn">
+                    <span class="icon">📦</span> JSON
+                </button>
+                <button class="top-btn" id="export-text-btn">
+                    <span class="icon">📄</span> Text
+                </button>
+            </div>
+        </div>
+
+        <div id="counter-grid"></div>
+    </main>
+
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            let currentCount = 0;
-            
-            const counterDisplay = document.getElementById('counter-display');
-            const countButton = document.getElementById('count-button');
-            const resetButton = document.getElementById('reset-button');
-            const messageDisplay = document.getElementById('message');
-            const targetInput = document.getElementById('target-input');
-            const stepInput = document.getElementById('step-input');
-            const targetClarity = document.getElementById('target-clarity');
+        document.addEventListener("DOMContentLoaded", () => {
+            // ====== STATE ======
+            const counters = [];
+            let nextId = 1;
+            let soundEnabled = true;
+            let trailEnabled = false;
+            let audioCtx = null;
 
-            let TARGET_COUNT = parseInt(targetInput.value, 10);
-            let STEP_VALUE = parseInt(stepInput.value, 10);
+            const MID_COUNT_CONFETTI_INTERVAL = 5;
+            const MID_CONFETTI_COUNT = 10;
+            const SUPER_CONFETTI_COUNT = 80;
 
-            function getValidValue(inputElement, defaultValue = 1) {
-                let val = parseInt(inputElement.value, 10);
+            const CONFETTI_COLORS = [
+                "#f44336","#e91e63","#9c27b0","#673ab7","#3f51b5",
+                "#2196f3","#03a9f4","#00bcd4","#009688","#4CAF50",
+                "#8BC34A","#CDDC39","#FFEB3B","#FFC107","#FF9800",
+                "#FF5722","#795548","#9E9E9E","#607D8B"
+            ];
+            const CONFETTI_EMOJIS = ["✨","🎉","🔥","⭐","💥","💫","🎊"];
+
+            // ====== DOM ELEMENTS ======
+            const grid = document.getElementById("counter-grid");
+            const addCounterBtn = document.getElementById("add-counter-btn");
+
+            const uiToggleBtn = document.getElementById("ui-toggle-btn");
+            const uiPanel = document.getElementById("ui-panel");
+            const cardStyleSelect = document.getElementById("card-style-select");
+            const buttonStyleSelect = document.getElementById("button-style-select");
+            const glowSelect = document.getElementById("glow-select");
+            const fontStyleSelect = document.getElementById("font-style-select");
+            const themeSelect = document.getElementById("theme-select");
+
+            const soundToggle = document.getElementById("sound-toggle");
+            const trailToggle = document.getElementById("trail-toggle");
+
+            const exportPngBtn = document.getElementById("export-png-btn");
+            const exportJsonBtn = document.getElementById("export-json-btn");
+            const exportTextBtn = document.getElementById("export-text-btn");
+
+            // ====== THEMES ======
+            const themes = {
+                gradient: {
+                    background: "linear-gradient(-45deg, var(--bg-base), var(--bg-darker), var(--bg-base))",
+                    elements: true
+                },
+                space: {
+                    background: "radial-gradient(circle at center, #0f2027, #203a43, #2c5364)",
+                    elements: false
+                },
+                nature: {
+                    background: "linear-gradient(135deg, #1e3c72, #2a5298, #56ccf2, #2f80ed)",
+                    elements: false
+                },
+                abstract: {
+                    background: "linear-gradient(45deg, #ff9a9e, #fad0c4, #a1c4fd, #c2e9fb)",
+                    elements: false
+                },
+                dark: {
+                    background: "radial-gradient(circle at top, #444, #111 60%, #000)",
+                    elements: false
+                },
+                neon: {
+                    background: "radial-gradient(circle at top, #0f0c29, #302b63, #24243e)",
+                    elements: false
+                },
+                gold: {
+                    background: "linear-gradient(135deg, #f6d365, #fda085, #f7b733, #fc4a1a)",
+                    elements: false
+                },
+                matrix: {
+                    background: "radial-gradient(circle at center, #0f0f0f, #001a00, #000000)",
+                    elements: false
+                },
+                galaxy: {
+                    background:
+                        "radial-gradient(circle at 20% 20%, #ff9a9e, transparent 50%), radial-gradient(circle at 80% 0%, #a18cd1, transparent 55%), radial-gradient(circle at 0% 80%, #fbc2eb, transparent 55%), #151242",
+                    elements: false
+                },
+                ocean: {
+                    background: "linear-gradient(135deg, #1a2a6c, #1e3c72, #2a5298, #00c6ff)",
+                    elements: false
+                },
+                candy: {
+                    background: "linear-gradient(135deg, #ff9a9e, #fecfef, #f6d365, #fda085)",
+                    elements: false
+                },
+                pastel: {
+                    background: "linear-gradient(135deg, #fbc2eb, #a6c1ee, #d4fc79, #96e6a1)",
+                    elements: false
+                }
+            };
+
+            // ====== UTIL ======
+            function ensureAudioContext() {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            function makeBeep(freq, duration, type = "sine") {
+                ensureAudioContext();
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+                gainNode.gain.setValueAtTime(0.0001, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.2, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration / 1000);
+                osc.start(now);
+                osc.stop(now + duration / 1000 + 0.05);
+            }
+
+            function playSound(type) {
+                if (!soundEnabled) return;
+                if (type === "click") {
+                    makeBeep(650, 80, "square");
+                } else if (type === "celebrate") {
+                    makeBeep(700, 120, "triangle");
+                    setTimeout(() => makeBeep(900, 120, "triangle"), 130);
+                    setTimeout(() => makeBeep(1150, 150, "triangle"), 280);
+                } else if (type === "mid") {
+                    makeBeep(500, 70, "sine");
+                }
+            }
+
+            function vibrateShort() {
+                if ("vibrate" in navigator) {
+                    navigator.vibrate([10, 20, 10]);
+                }
+            }
+
+            function rand(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            function getValidNumber(input, defaultValue) {
+                let val = parseInt(input.value, 10);
                 if (isNaN(val) || val < 1) {
                     val = defaultValue;
-                    inputElement.value = defaultValue; 
+                    input.value = defaultValue;
                 }
                 return val;
             }
 
-            function updateTheme() {
-                // Calculate a new HUE value based on the current count.
-                // Multiplying by 18 shifts the hue continuously for smooth cycling.
-                const newHue = (currentCount * 18) % 360;
-                document.documentElement.style.setProperty('--base-hue', newHue);
+            function updateHueBasedOnCount(totalCount) {
+                const newHue = (totalCount * 18) % 360;
+                document.documentElement.style.setProperty("--base-hue", newHue);
             }
 
-            function updateClarity() {
-                targetClarity.textContent = `Counting towards: ${TARGET_COUNT}`;
+            function createConfetti(count, rect, style) {
+                for (let i = 0; i < count; i++) {
+                    const conf = document.createElement("div");
+                    conf.classList.add("confetti");
+
+                    const color = CONFETTI_COLORS[Math.floor(rand(0, CONFETTI_COLORS.length))];
+
+                    if (style === "emoji") {
+                        conf.textContent = CONFETTI_EMOJIS[Math.floor(rand(0, CONFETTI_EMOJIS.length))];
+                        conf.style.backgroundColor = "transparent";
+                        conf.style.boxShadow = "none";
+                    } else {
+                        conf.style.backgroundColor = color;
+                        conf.textContent = "";
+                    }
+                    if (style === "shapes") {
+                        conf.style.borderRadius = Math.random() > 0.5 ? "0%" : "50%";
+                    }
+
+                    const startX = rect.left + rect.width / 2;
+                    const startY = rect.top + rect.height / 2;
+
+                    conf.style.left = `${startX}px`;
+                    conf.style.top = `${startY}px`;
+
+                    const xTranslation = rand(-250, 250);
+                    const yTranslation = rand(150, 450);
+                    const rotation = rand(0, 720);
+                    const duration = rand(1.5, 3.5);
+
+                    conf.style.setProperty("--x", `${xTranslation}px`);
+                    conf.style.setProperty("--y", `${yTranslation}px`);
+                    conf.style.setProperty("--r", `${rotation}deg`);
+                    conf.style.animation = `confetti-fall ${duration}s cubic-bezier(0.1, 1, 0.4, 1.2) forwards`;
+
+                    document.body.appendChild(conf);
+                    conf.addEventListener("animationend", () => conf.remove());
+                }
             }
 
-            function updateCounter() {
-                // Recalculate values on every click to allow dynamic changes
-                TARGET_COUNT = getValidValue(targetInput);
-                STEP_VALUE = getValidValue(stepInput);
+            function createSuperConfetti(count, style) {
+                const rect = { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+                for (let i = 0; i < count; i++) {
+                    const conf = document.createElement("div");
+                    conf.classList.add("confetti");
 
-                // Check if the target is already reached
-                if (currentCount >= TARGET_COUNT) return;
+                    const color = CONFETTI_COLORS[Math.floor(rand(0, CONFETTI_COLORS.length))];
 
-                currentCount += STEP_VALUE;
+                    if (style === "emoji") {
+                        conf.textContent = CONFETTI_EMOJIS[Math.floor(rand(0, CONFETTI_EMOJIS.length))];
+                        conf.style.backgroundColor = "transparent";
+                        conf.style.boxShadow = "none";
+                    } else {
+                        conf.style.backgroundColor = color;
+                        conf.textContent = "";
+                    }
+                    if (style === "shapes") {
+                        conf.style.borderRadius = Math.random() > 0.5 ? "0%" : "50%";
+                    }
 
-                // 1. Check for Target
-                if (currentCount >= TARGET_COUNT) {
-                    currentCount = TARGET_COUNT; // Ensure it stops exactly at the target
-                    targetInput.disabled = true;
-                    stepInput.disabled = true;
-                    countButton.disabled = true;
-                    countButton.textContent = 'Goal Achieved!';
-                    resetButton.classList.remove('hidden');
-                    messageDisplay.classList.remove('hidden');
-                    messageDisplay.textContent = `🥳 Goal Reached: ${TARGET_COUNT} in style! 🎉`;
-                    messageDisplay.classList.add('celebration');
-                } else {
-                    // Change button text dynamically for engagement
-                    countButton.textContent = currentCount % (STEP_VALUE * 2) === 0 ? `Next +${STEP_VALUE}!` : 'Keep Counting! 🔥';
+                    const startX = rand(0, rect.width);
+                    const startY = rand(0, rect.height / 2);
+
+                    conf.style.left = `${startX}px`;
+                    conf.style.top = `${startY}px`;
+
+                    const xTranslation = rand(-200, 200);
+                    const yTranslation = rand(150, 450);
+                    const rotation = rand(0, 720);
+                    const duration = rand(1.5, 3.5);
+
+                    conf.style.setProperty("--x", `${xTranslation}px`);
+                    conf.style.setProperty("--y", `${yTranslation}px`);
+                    conf.style.setProperty("--r", `${rotation}deg`);
+                    conf.style.animation = `confetti-fall ${duration}s cubic-bezier(0.1, 1, 0.4, 1.2) forwards`;
+
+                    document.body.appendChild(conf);
+                    conf.addEventListener("animationend", () => conf.remove());
+                }
+            }
+
+            function createTrailParticle(x, y) {
+                const p = document.createElement("div");
+                p.classList.add("trail-particle");
+                const size = rand(4, 9);
+                p.style.width = `${size}px`;
+                p.style.height = `${size}px`;
+                p.style.left = `${x}px`;
+                p.style.top = `${y}px`;
+                p.style.backgroundColor =
+                    CONFETTI_COLORS[Math.floor(rand(0, CONFETTI_COLORS.length))];
+                document.body.appendChild(p);
+                p.addEventListener("animationend", () => p.remove());
+            }
+
+            // ====== COUNTER CREATION ======
+            function createCounterState() {
+                return {
+                    id: nextId++,
+                    current: 0,
+                    target: 10,
+                    step: 1,
+                    mode: "up",
+                    effect: "super",
+                    confetti: "classic",
+                    auto: false,
+                    autoTimer: null
+                };
+            }
+
+            function renderCounterCard(state) {
+                const card = document.createElement("div");
+                card.className = "counter-card";
+                card.dataset.id = state.id;
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="card-title">Super Dynamic Counter #${state.id}</div>
+                        <button class="delete-btn" title="Remove counter">✖</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label>Target</label>
+                                <input type="number" class="target-input" value="${state.target}" min="1">
+                            </div>
+                            <div class="setting-item">
+                                <label>Step</label>
+                                <input type="number" class="step-input" value="${state.step}" min="1">
+                            </div>
+                            <div class="setting-item">
+                                <label>Mode</label>
+                                <select class="mode-select">
+                                    <option value="up"${state.mode === "up" ? " selected" : ""}>Up</option>
+                                    <option value="down"${state.mode === "down" ? " selected" : ""}>Down</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="setting-item">
+                                <label>Effect</label>
+                                <select class="effect-select">
+                                    <option value="super">Super Bounce</option>
+                                    <option value="flip">3D Flip</option>
+                                    <option value="fire">Fire Burst</option>
+                                    <option value="shockwave">Shockwave</option>
+                                    <option value="liquid">Liquid Morph</option>
+                                    <option value="pop3d">3D Pop</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label>Confetti</label>
+                                <select class="confetti-select">
+                                    <option value="classic">Classic</option>
+                                    <option value="emoji">Emoji</option>
+                                    <option value="shapes">Shapes</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label>Auto (ms)</label>
+                                <input type="number" class="speed-input" value="400" min="100">
+                            </div>
+                        </div>
+
+                        <div class="target-clarity">Counting up towards: ${state.target}</div>
+
+                        <div class="counter-value" data-value="${state.current}">${state.current}</div>
+
+                        <div class="card-buttons">
+                            <button class="count-btn">Count! ✨</button>
+                            <button class="reset-btn">Reset</button>
+                            <button class="auto-btn">Auto: Off</button>
+                        </div>
+
+                        <div class="message"></div>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+
+                const deleteBtn = card.querySelector(".delete-btn");
+                const targetInput = card.querySelector(".target-input");
+                const stepInput = card.querySelector(".step-input");
+                const modeSelect = card.querySelector(".mode-select");
+                const effectSelect = card.querySelector(".effect-select");
+                const confettiSelect = card.querySelector(".confetti-select");
+                const speedInput = card.querySelector(".speed-input");
+                const clarity = card.querySelector(".target-clarity");
+                const valueEl = card.querySelector(".counter-value");
+                const countBtn = card.querySelector(".count-btn");
+                const resetBtn = card.querySelector(".reset-btn");
+                const autoBtn = card.querySelector(".auto-btn");
+                const messageEl = card.querySelector(".message");
+
+                effectSelect.value = state.effect;
+                confettiSelect.value = state.confetti;
+
+                function updateClarity() {
+                    if (state.mode === "up") {
+                        clarity.textContent = `Counting up towards: ${state.target}`;
+                    } else {
+                        clarity.textContent = `Counting down to 0 from: ${state.target}`;
+                    }
                 }
 
-                // 2. Update Display and Trigger Animation
-                counterDisplay.textContent = currentCount;
-                counterDisplay.classList.remove('animated');
-                // A trick to restart the CSS animation
-                void counterDisplay.offsetWidth; 
-                counterDisplay.classList.add('animated');
+                function updateDisplay() {
+                    valueEl.textContent = state.current;
+                    valueEl.setAttribute("data-value", state.current);
+                }
 
-                // 3. Continuous Theme Change
-                updateTheme();
-            }
-
-            function resetCounter() {
-                currentCount = 0;
-                
-                // Reset element states
-                counterDisplay.textContent = currentCount;
-                counterDisplay.classList.remove('animated');
-                
-                // Reset theme to the default starting hue
-                document.documentElement.style.setProperty('--base-hue', 200); 
-                
-                // Reset button and message states
-                targetInput.disabled = false;
-                stepInput.disabled = false;
-                countButton.disabled = false;
-                countButton.textContent = 'Count Up! ✨';
-                messageDisplay.classList.add('hidden');
-                messageDisplay.classList.remove('celebration');
-                resetButton.classList.add('hidden');
-                
-                // Update clarity display
-                TARGET_COUNT = getValidValue(targetInput);
-                updateClarity();
-            }
-
-            // --- Event Listeners ---
-            countButton.addEventListener('click', updateCounter);
-            resetButton.addEventListener('click', resetCounter);
-
-            // Reset and update clarity when settings change
-            [targetInput, stepInput].forEach(input => {
-                input.addEventListener('change', () => {
-                    // Reset the counter if the user changes settings mid-count
-                    if (currentCount > 0 || countButton.disabled) {
-                        resetCounter();
-                    } else {
-                        TARGET_COUNT = getValidValue(targetInput);
-                        updateClarity();
+                function applyEffect() {
+                    valueEl.classList.remove(
+                        "effect-super", "effect-flip", "effect-fire",
+                        "effect-liquid", "effect-pop3d", "effect-shockwave", "shockwave"
+                    );
+                    void valueEl.offsetWidth;
+                    switch (state.effect) {
+                        case "super":
+                            valueEl.classList.add("effect-super");
+                            break;
+                        case "flip":
+                            valueEl.classList.add("effect-flip");
+                            break;
+                        case "fire":
+                            valueEl.classList.add("effect-fire");
+                            break;
+                        case "liquid":
+                            valueEl.classList.add("effect-liquid");
+                            break;
+                        case "pop3d":
+                            valueEl.classList.add("effect-pop3d");
+                            break;
+                        case "shockwave":
+                            valueEl.classList.add("effect-shockwave", "shockwave");
+                            break;
                     }
+                }
+
+                function lockOnGoal() {
+                    targetInput.disabled = true;
+                    stepInput.disabled = true;
+                    countBtn.disabled = true;
+                }
+
+                function unlockInputs() {
+                    targetInput.disabled = false;
+                    stepInput.disabled = false;
+                    countBtn.disabled = false;
+                }
+
+                function handleGoalReached() {
+                    lockOnGoal();
+                    resetBtn.disabled = false;
+                    messageEl.textContent =
+                        state.mode === "up"
+                            ? `🎉 GOAL REACHED: ${state.target}! SUPER BLAST! 🚀`
+                            : "🎉 COUNTDOWN COMPLETE! SUPER BLAST! 🚀";
+                    messageEl.classList.add("show", "celebration");
+                    createSuperConfetti(SUPER_CONFETTI_COUNT, state.confetti);
+                    playSound("celebrate");
+                    vibrateShort();
+                }
+
+                function saveAll() {
+                    saveState();
+                }
+
+                function updateCounterOnce() {
+                    state.target = getValidNumber(targetInput, 10);
+                    state.step = getValidNumber(stepInput, 1);
+
+                    if (state.mode === "up") {
+                        if (state.current >= state.target) return;
+                        state.current += state.step;
+                        if (state.current >= state.target) {
+                            state.current = state.target;
+                            updateDisplay();
+                            applyEffect();
+                            updateHueBasedOnCount(state.current);
+                            handleGoalReached();
+                        } else {
+                            if (state.current % MID_COUNT_CONFETTI_INTERVAL === 0 && state.current > 0) {
+                                const rect = card.getBoundingClientRect();
+                                createConfetti(MID_CONFETTI_COUNT, rect, state.confetti);
+                                playSound("mid");
+                            } else {
+                                playSound("click");
+                            }
+                            updateDisplay();
+                            applyEffect();
+                            updateHueBasedOnCount(state.current);
+                            countBtn.textContent = state.current % (state.step * 2) === 0
+                                ? `Next +${state.step}!`
+                                : "Keep Going! 🔥";
+                        }
+                    } else {
+                        if (state.current <= 0) return;
+                        state.current -= state.step;
+                        if (state.current <= 0) {
+                            state.current = 0;
+                            updateDisplay();
+                            applyEffect();
+                            updateHueBasedOnCount(state.current);
+                            handleGoalReached();
+                        } else {
+                            if (state.current % MID_COUNT_CONFETTI_INTERVAL === 0 && state.current > 0) {
+                                const rect = card.getBoundingClientRect();
+                                createConfetti(MID_CONFETTI_COUNT, rect, state.confetti);
+                                playSound("mid");
+                            } else {
+                                playSound("click");
+                            }
+                            updateDisplay();
+                            applyEffect();
+                            updateHueBasedOnCount(state.current);
+                            countBtn.textContent = "Counting Down ⏱";
+                        }
+                    }
+
+                    saveAll();
+                }
+
+                function resetCounter() {
+                    if (state.auto && state.autoTimer) {
+                        clearInterval(state.autoTimer);
+                        state.autoTimer = null;
+                        state.auto = false;
+                        autoBtn.textContent = "Auto: Off";
+                    }
+                    state.target = getValidNumber(targetInput, 10);
+                    state.step = getValidNumber(stepInput, 1);
+                    state.current = state.mode === "up" ? 0 : state.target;
+
+                    document.querySelectorAll(".confetti, .particle, .trail-particle")
+                        .forEach(e => e.remove());
+
+                    updateDisplay();
+                    valueEl.classList.remove(
+                        "effect-super","effect-flip","effect-fire",
+                        "effect-liquid","effect-pop3d","effect-shockwave","shockwave"
+                    );
+                    messageEl.textContent = "";
+                    messageEl.classList.remove("show", "celebration");
+                    unlockInputs();
+                    countBtn.textContent = "Count! ✨";
+                    updateClarity();
+                    saveAll();
+                }
+
+                function toggleAuto() {
+                    const speed = getValidNumber(speedInput, 400);
+                    if (!state.auto) {
+                        state.auto = true;
+                        autoBtn.textContent = "Auto: On";
+                        state.autoTimer = setInterval(() => {
+                            updateCounterOnce();
+                            if (countBtn.disabled) {
+                                state.auto = false;
+                                autoBtn.textContent = "Auto: Off";
+                                clearInterval(state.autoTimer);
+                                state.autoTimer = null;
+                            }
+                        }, speed);
+                    } else {
+                        state.auto = false;
+                        autoBtn.textContent = "Auto: Off";
+                        if (state.autoTimer) {
+                            clearInterval(state.autoTimer);
+                            state.autoTimer = null;
+                        }
+                    }
+                    saveAll();
+                }
+
+                // Event listeners
+                deleteBtn.addEventListener("click", () => {
+                    if (counters.length === 1) {
+                        alert("At least one counter is required.");
+                        return;
+                    }
+                    if (state.auto && state.autoTimer) {
+                        clearInterval(state.autoTimer);
+                    }
+                    const idx = counters.findIndex(c => c.id === state.id);
+                    if (idx !== -1) counters.splice(idx, 1);
+                    card.remove();
+                    saveAll();
                 });
+
+                countBtn.addEventListener("click", () => {
+                    updateCounterOnce();
+                    if (trailEnabled) vibrateShort();
+                });
+
+                resetBtn.addEventListener("click", resetCounter);
+                autoBtn.addEventListener("click", toggleAuto);
+
+                targetInput.addEventListener("change", () => {
+                    state.target = getValidNumber(targetInput, 10);
+                    if (state.mode === "down" && state.current === 0) {
+                        state.current = state.target;
+                    }
+                    updateClarity();
+                    saveAll();
+                    resetCounter();
+                });
+
+                stepInput.addEventListener("change", () => {
+                    state.step = getValidNumber(stepInput, 1);
+                    saveAll();
+                    resetCounter();
+                });
+
+                modeSelect.addEventListener("change", () => {
+                    state.mode = modeSelect.value;
+                    resetCounter();
+                });
+
+                effectSelect.addEventListener("change", () => {
+                    state.effect = effectSelect.value;
+                    saveAll();
+                });
+
+                confettiSelect.addEventListener("change", () => {
+                    state.confetti = confettiSelect.value;
+                    saveAll();
+                });
+
+                speedInput.addEventListener("change", () => {
+                    saveAll();
+                });
+
+                updateClarity();
+                updateDisplay();
+
+                return card;
+            }
+
+            function addNewCounterFromState(state) {
+                counters.push(state);
+                renderCounterCard(state);
+            }
+
+            function addNewCounter() {
+                const state = createCounterState();
+                addNewCounterFromState(state);
+                saveState();
+            }
+
+            // ====== SAVE / LOAD ======
+            function saveState() {
+                const uiState = {
+                    theme: themeSelect.value,
+                    cardStyle: document.body.getAttribute("data-card-style"),
+                    buttonStyle: document.body.getAttribute("data-button-style"),
+                    glow: document.body.getAttribute("data-glow"),
+                    fontStyle: document.body.getAttribute("data-font-style"),
+                    soundEnabled,
+                    trailEnabled
+                };
+                const counterStates = counters.map(c => ({
+                    id: c.id,
+                    current: c.current,
+                    target: c.target,
+                    step: c.step,
+                    mode: c.mode,
+                    effect: c.effect,
+                    confetti: c.confetti
+                }));
+                const payload = { uiState, counterStates, nextId };
+                try {
+                    localStorage.setItem("superDynamicMultiCounter", JSON.stringify(payload));
+                } catch (e) {}
+            }
+
+            function loadState() {
+                try {
+                    const raw = localStorage.getItem("superDynamicMultiCounter");
+                    if (!raw) return;
+                    const data = JSON.parse(raw);
+                    if (data.uiState) {
+                        const u = data.uiState;
+                        if (u.theme && themes[u.theme]) {
+                            themeSelect.value = u.theme;
+                            applyTheme();
+                        }
+                        if (u.cardStyle) {
+                            document.body.setAttribute("data-card-style", u.cardStyle);
+                            cardStyleSelect.value = u.cardStyle;
+                        }
+                        if (u.buttonStyle) {
+                            document.body.setAttribute("data-button-style", u.buttonStyle);
+                            buttonStyleSelect.value = u.buttonStyle;
+                        }
+                        if (u.glow) {
+                            document.body.setAttribute("data-glow", u.glow);
+                            glowSelect.value = u.glow;
+                        }
+                        if (u.fontStyle) {
+                            document.body.setAttribute("data-font-style", u.fontStyle);
+                            fontStyleSelect.value = u.fontStyle;
+                        }
+                        if (typeof u.soundEnabled === "boolean") {
+                            soundEnabled = u.soundEnabled;
+                            soundToggle.checked = soundEnabled;
+                        }
+                        if (typeof u.trailEnabled === "boolean") {
+                            trailEnabled = u.trailEnabled;
+                            trailToggle.checked = trailEnabled;
+                        }
+                    }
+                    if (Array.isArray(data.counterStates) && data.counterStates.length > 0) {
+                        grid.innerHTML = "";
+                        counters.length = 0;
+                        data.counterStates.forEach(cs => {
+                            const st = {
+                                id: cs.id,
+                                current: cs.current || 0,
+                                target: cs.target || 10,
+                                step: cs.step || 1,
+                                mode: cs.mode === "down" ? "down" : "up",
+                                effect: cs.effect || "super",
+                                confetti: cs.confetti || "classic",
+                                auto: false,
+                                autoTimer: null
+                            };
+                            counters.push(st);
+                            renderCounterCard(st);
+                        });
+                        nextId = data.nextId || (Math.max(...counters.map(c => c.id)) + 1);
+                    }
+                } catch (e) {}
+            }
+
+            // ====== THEME & UI PANEL ======
+            function applyTheme() {
+                const themeKey = themeSelect.value;
+                const cfg = themes[themeKey] || themes.gradient;
+                document.body.style.background = cfg.background;
+                document.body.style.backgroundSize = "350% 350%";
+                const blobs = document.querySelectorAll(".bg-element");
+                blobs.forEach(b => {
+                    b.style.display = cfg.elements ? "block" : "none";
+                });
+
+                if (themeKey === "gradient") {
+                    document.body.style.animation = "gradient-shift 16s ease infinite";
+                } else {
+                    document.body.style.animation = "none";
+                }
+                saveState();
+            }
+
+            uiToggleBtn.addEventListener("click", () => {
+                uiPanel.classList.toggle("open");
             });
 
-            // Initial setup: ensure the count starts at 0 and clarity is set
-            resetCounter();
+            cardStyleSelect.addEventListener("change", () => {
+                document.body.setAttribute("data-card-style", cardStyleSelect.value);
+                saveState();
+            });
+
+            buttonStyleSelect.addEventListener("change", () => {
+                document.body.setAttribute("data-button-style", buttonStyleSelect.value);
+                saveState();
+            });
+
+            glowSelect.addEventListener("change", () => {
+                document.body.setAttribute("data-glow", glowSelect.value);
+                saveState();
+            });
+
+            fontStyleSelect.addEventListener("change", () => {
+                document.body.setAttribute("data-font-style", fontStyleSelect.value);
+                saveState();
+            });
+
+            themeSelect.addEventListener("change", applyTheme);
+
+            // ====== GLOBAL CONTROLS ======
+            soundToggle.addEventListener("change", () => {
+                soundEnabled = soundToggle.checked;
+                saveState();
+            });
+
+            trailToggle.addEventListener("change", () => {
+                trailEnabled = trailToggle.checked;
+                saveState();
+            });
+
+            document.addEventListener("mousemove", e => {
+                if (!trailEnabled) return;
+                createTrailParticle(e.clientX, e.clientY);
+            });
+
+            addCounterBtn.addEventListener("click", () => {
+                addNewCounter();
+            });
+
+            // ====== EXPORTS ======
+            exportPngBtn.addEventListener("click", async () => {
+                try {
+                    const clone = grid.cloneNode(true);
+                    const wrapper = document.createElement("div");
+                    wrapper.style.padding = "16px";
+                    wrapper.style.background = "#0b1120";
+                    wrapper.appendChild(clone);
+                    wrapper.style.position = "fixed";
+                    wrapper.style.left = "-9999px";
+                    document.body.appendChild(wrapper);
+
+                    const canvas = await html2canvas(wrapper, {
+                        backgroundColor: "#0b1120"
+                    });
+                    const link = document.createElement("a");
+                    link.download = "counters.png";
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
+                    wrapper.remove();
+                } catch (err) {
+                    alert("PNG export failed: " + err);
+                }
+            });
+
+            exportJsonBtn.addEventListener("click", () => {
+                const payload = {
+                    counters: counters.map(c => ({
+                        id: c.id,
+                        current: c.current,
+                        target: c.target,
+                        step: c.step,
+                        mode: c.mode,
+                        effect: c.effect,
+                        confetti: c.confetti
+                    }))
+                };
+                const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "counters.json";
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            exportTextBtn.addEventListener("click", async () => {
+                const lines = counters.map(c =>
+                    `Counter #${c.id}: current=${c.current}, target=${c.target}, step=${c.step}, mode=${c.mode}`
+                );
+                const text = lines.join("\n");
+                const blob = new Blob([text], { type: "text/plain" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "counters.txt";
+                a.click();
+                URL.revokeObjectURL(url);
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                    } catch {}
+                }
+            });
+
+            // ====== INIT ======
+            loadState();
+            if (counters.length === 0) {
+                addNewCounter();
+            }
+            applyTheme();
         });
     </script>
 </body>
